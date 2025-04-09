@@ -91,7 +91,6 @@ export class ConversationService {
           if (toolCalls && toolCalls.length > 0) {
             hasToolCalls = true
             const result = await this.handleToolCalls(toolCalls, messages, res)
-            console.log('result', result)
             this.completionsStream({
               messages: [...messages, result] as any,
             }, res)
@@ -139,7 +138,7 @@ export class ConversationService {
       res.write(`data: ${JSON.stringify({ content: `\n \n tool_call: ${toolName} . . . \n \n ` })}\n\n`)
       const mcpClient = new MCPClient();
       await mcpClient.connectToServer('https://search.mcp.dvlin.com/sse');
-      console.log('connectToServer')
+      console.log('connectToServer', toolName, toolArgs)
       const result = await mcpClient.callTool({
         toolName,
         toolArgs,
