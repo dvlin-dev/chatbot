@@ -63,6 +63,7 @@ export async function completionsStream(
       },
       body: JSON.stringify(data),
       signal: abortController.signal,
+      openWhenHidden: true,
 
       onopen: async (response: Response) => {
         if (!response.ok || !response.headers.get('content-type')?.includes('text/event-stream')) {

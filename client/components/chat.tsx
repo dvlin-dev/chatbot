@@ -43,7 +43,6 @@ export function Chat({
   id: string;
   selectedModelId: string;
 }) {
-  const { tools } = useMCPStore();
   const [apiMessages, setApiMessages] = useState<ApiMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);

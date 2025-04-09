@@ -59,8 +59,7 @@ export class ConversationService {
 
   async completionsStream(completionsDto: CompletionsDto, res: Response) {
     const { messages, tools } = completionsDto
-
-    // 将消息格式转换为 OpenAI 格式
+ 
     const openaiMessages = messages.map((message) => ({
       role: message.role,
       content: message.content,
