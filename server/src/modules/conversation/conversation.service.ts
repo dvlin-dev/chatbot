@@ -139,7 +139,7 @@ export class ConversationService {
       const toolArgs = JSON.parse(toolCall.function.arguments);
       res.write(`data: ${JSON.stringify({ content: `\n \n tool_call: ${toolName} . . . \n \n ` })}\n\n`)
       const mcpClient = new MCPClient();
-      await mcpClient.connectToServer('http://144.34.233.244:5101/sse');
+      await mcpClient.connectToServer('https://search.mcp.dvlin.com/sse');
       console.log('connectToServer')
       const result = await mcpClient.callTool({
         toolName,
