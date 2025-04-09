@@ -3,10 +3,11 @@ import { IsArray, IsNotEmpty, IsOptional, IsString } from 'class-validator'
 import { ChatCompletionTool } from 'openai/resources'
 
 // 定义 MessageRole 枚举
-enum MessageRole {
+export enum MessageRole {
   system = 'system',
   assistant = 'assistant',
   user = 'user',
+  tool = 'tool',
 }
 
 class MessageDto {

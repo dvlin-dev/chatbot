@@ -184,16 +184,13 @@ export function Chat({
     console.log("isLoading:", isLoading);
     
     if (isLoading || !currentMessages?.length) {
-      console.log("流式请求被跳过，原因:", isLoading ? "正在加载" : "消息为空",);
       return;
     }
     
     const tools = useMCPStore.getState().tools;
-    console.log("设置isLoading为true");
     setIsLoading(true);
     
     try {
-      console.log("发送请求到API，消息数量:", currentMessages.length);
       const controller = await completionsStream(
         { 
           messages: currentMessages.map(msg => ({
@@ -210,13 +207,11 @@ export function Chat({
           setIsLoading(false);
         },
         () => {
-          console.log("流式请求完成");
           setIsLoading(false);
           abortControllerRef.current = null;
         }
       );
       
-      console.log("API请求已发送，控制器:", controller);
       abortControllerRef.current = controller;
     } catch (error) {
       console.error('启动流式请求失败:', error);

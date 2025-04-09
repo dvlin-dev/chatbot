@@ -55,7 +55,7 @@ export function MCPSelector({
         )}
       >
         <Button variant="outline" className="md:px-2 md:h-[34px]">
-          {loading ? 'Loading...' : selectedTool || 'MCP 工具'}
+          {loading ? 'Mcp Loading...' : selectedTool || 'MCP 工具'}
           <ChevronDownIcon />
         </Button>
       </DropdownMenuTrigger>
