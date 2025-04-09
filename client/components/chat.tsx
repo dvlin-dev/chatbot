@@ -64,6 +64,28 @@ export function Chat({
     }
   }, []);
 
+  // 更新或添加助手消息
+  const updateAssistantMessage = useCallback((content: string) => {
+    setApiMessages(prev => {
+      const newMessages = [...prev];
+      const lastMessage = newMessages[newMessages.length - 1];
+      
+      if (lastMessage && lastMessage.role === MessageRole.assistant) {
+        // 更新现有消息
+        return [
+          ...newMessages.slice(0, -1),
+          { ...lastMessage, content: lastMessage.content + content }
+        ];
+      } else {
+        // 添加新消息
+        return [
+          ...newMessages,
+          { id: uuidv4(), content, role: MessageRole.assistant }
+        ];
+      }
+    });
+  }, []);
+
   // 停止生成
   const stop = useCallback(() => {
     if (abortControllerRef.current) {
@@ -75,20 +97,14 @@ export function Chat({
 
   // 重新加载/重新生成
   const reload = useCallback(async () => {
-    if (isLoading) return null;
-    if (apiMessages.length === 0) return null;
-
-    console.log('重新加载聊天，当前消息数:', apiMessages.length);
+    if (isLoading || apiMessages.length === 0) return null;
     
     // 找到最后一条用户消息
     const lastUserMessageIndex = [...apiMessages].reverse().findIndex(
       msg => msg.role === MessageRole.user
     );
     
-    if (lastUserMessageIndex === -1) {
-      console.log('未找到用户消息，无法重新生成');
-      return null;
-    }
+    if (lastUserMessageIndex === -1) return null;
     
     // 移除最后一条助手消息（如果存在）
     let newMessages = [...apiMessages];
@@ -96,10 +112,7 @@ export function Chat({
     if (lastMessage.role === MessageRole.assistant) {
       newMessages = newMessages.slice(0, -1);
       setApiMessages(newMessages);
-      console.log('移除了最后一条助手消息，准备重新生成');
     }
-
-    console.log('开始重新生成，消息数量:', newMessages.length);
     
     // 开始流式请求
     await startCompletionStream(newMessages);
@@ -146,15 +159,31 @@ export function Chat({
     append(userMessage);
   }, [input, isLoading, append]);
 
+  // 处理流式消息
+  const handleStreamMessage = useCallback((message: string) => {
+    try {
+      // 检查是否是[DONE]消息
+      if (message === '[DONE]') return;
+      
+      try {
+        const data = JSON.parse(message);
+        const content = data.content || '';
+        
+        if (content) {
+          updateAssistantMessage(content);
+        }
+      } catch (error) {
+        // 如果不是JSON，直接使用消息
+        updateAssistantMessage(message);
+      }
+    } catch (error) {
+      console.error('处理流消息失败:', error);
+    }
+  }, [updateAssistantMessage]);
+
   // 启动流式完成
   const startCompletionStream = useCallback(async (currentMessages: ApiMessage[]) => {
-    if (isLoading) return;
-    
-    // 确保消息数组不为空
-    if (!currentMessages || currentMessages.length === 0) {
-      console.error('消息数组为空，无法发送请求');
-      return;
-    }
+    if (isLoading || !currentMessages?.length) return;
     
     setIsLoading(true);
     
@@ -166,73 +195,7 @@ export function Chat({
             role: msg.role
           }))
         },
-        (message: string) => {
-          try {
-            // 检查是否是[DONE]消息
-            if (message === '[DONE]') {
-              console.log('收到结束标记 [DONE]，完成响应');
-              return;
-            }
-            
-            const data = JSON.parse(message);
-            const content = data.content || '';
-            
-            if (content) {
-              setApiMessages(prev => {
-                const newMessages = [...prev];
-                const lastMessage = newMessages[newMessages.length - 1];
-                
-                if (lastMessage && lastMessage.role === MessageRole.assistant) {
-                  // 创建新的内容对象而不是追加，避免重复
-                  const updatedMessage = {
-                    ...lastMessage,
-                    content: lastMessage.content + content
-                  };
-                  newMessages[newMessages.length - 1] = updatedMessage;
-                  return [...newMessages];
-                } else {
-                  // 创建新的助手消息
-                  return [...newMessages, {
-                    id: uuidv4(),
-                    content: content,
-                    role: MessageRole.assistant
-                  }];
-                }
-              });
-            }
-          } catch (error) {
-            console.error('解析流消息失败:', error, message);
-            
-            // 检查是否是[DONE]消息
-            if (message === '[DONE]') {
-              console.log('收到结束标记 [DONE]，完成响应');
-              return;
-            }
-            
-            // 如果不是JSON，直接使用消息
-            setApiMessages(prev => {
-              const newMessages = [...prev];
-              const lastMessage = newMessages[newMessages.length - 1];
-              
-              if (lastMessage && lastMessage.role === MessageRole.assistant) {
-                // 创建新的内容对象而不是追加，避免重复
-                const updatedMessage = {
-                  ...lastMessage,
-                  content: lastMessage.content + message
-                };
-                newMessages[newMessages.length - 1] = updatedMessage;
-                return [...newMessages];
-              } else {
-                // 创建新的助手消息
-                return [...newMessages, {
-                  id: uuidv4(),
-                  content: message,
-                  role: MessageRole.assistant
-                }];
-              }
-            });
-          }
-        },
+        handleStreamMessage,
         (error: any) => {
           console.error('流式请求错误:', error);
           setIsLoading(false);
@@ -248,7 +211,7 @@ export function Chat({
       console.error('启动流式请求失败:', error);
       setIsLoading(false);
     }
-  }, [id, isLoading]);
+  }, [isLoading, handleStreamMessage]);
 
   return (
     <div className="flex flex-col min-w-0 h-dvh bg-background">
