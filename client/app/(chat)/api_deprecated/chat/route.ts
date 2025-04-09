@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   const sseClient = await experimental_createMCPClient({
     transport: {
       type: 'sse',
-      url: 'https://search-exa.mcp.dvlin.com/sse',
+      url: 'https://search.mcp.dvlin.com/sse',
     },
   });
 

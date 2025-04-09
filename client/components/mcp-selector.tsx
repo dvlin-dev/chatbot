@@ -28,7 +28,7 @@ export function MCPSelector({
       setLoading(true);
       try {
         const mcpClient = new MCPClient();
-        const tools = await mcpClient.connectToServer('https://search-exa.mcp.dvlin.com/sse');
+        const tools = await mcpClient.connectToServer('https://search.mcp.dvlin.com/sse');
         console.log('tools:', tools);
         setTools(tools);
         
