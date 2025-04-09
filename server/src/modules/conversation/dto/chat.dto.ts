@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator'
+import { IsArray, IsNotEmpty, IsOptional, IsString } from 'class-validator'
+import { ChatCompletionTool } from 'openai/resources'
 
 // 定义 MessageRole 枚举
 enum MessageRole {
@@ -23,4 +24,9 @@ export class CompletionsDto {
   @ApiProperty({ description: 'messages', required: true, type: [MessageDto] })
   @IsNotEmpty()
   messages: MessageDto[]
+
+  @ApiProperty({ description: 'tools', required: false, type: [Object], isArray: true })
+  @IsOptional()
+  @IsArray()
+  tools?: ChatCompletionTool[]
 }

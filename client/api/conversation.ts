@@ -1,6 +1,7 @@
 import { ApiResponse } from './types'
 import { httpRequest } from './index'
 import { fetchEventSource, EventSourceMessage } from '@microsoft/fetch-event-source'
+import { ChatCompletionTool } from 'openai/resources/index.mjs'
 
 // 消息角色枚举
 export enum MessageRole {
@@ -24,8 +25,8 @@ export interface MessageDto {
 
 // 完成请求
 export interface CompletionsDto {
-  userId?: string
   messages: MessageDto[]
+  tools?: ChatCompletionTool[]
 }
 
 // 完成请求
@@ -41,9 +42,10 @@ export async function completionsStream(
 ): Promise<{ abort: () => void }> {
   // 检查messages数组是否为空
   if (!data.messages || data.messages.length === 0) {
-    const error = new Error('消息数组不能为空')
-    onError(error)
-    throw error
+    // const error = new Error('消息数组不能为空')
+    // onError(error)
+    // throw error
+    return { abort: () => {} };
   }
 
   // 构建完整的URL
@@ -66,8 +68,9 @@ export async function completionsStream(
 
       onopen: async (response: Response) => {
         if (!response.ok || !response.headers.get('content-type')?.includes('text/event-stream')) {
-          const errorText = await response.text();
-          throw new Error(`SSE 连接失败: ${response.status} ${response.statusText} - ${errorText}`)
+          // const errorText = await response.text();
+          // throw new Error(`SSE 连接失败: ${response.status} ${response.statusText} - ${errorText}`)
+          return;
         }
       },
       
@@ -91,6 +94,7 @@ export async function completionsStream(
 
   } catch (error) {
     onError(error);
-    throw error
+    // throw error
+    return { abort: () => {} };
   }
 }

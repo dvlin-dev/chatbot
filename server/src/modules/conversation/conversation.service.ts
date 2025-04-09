@@ -2,32 +2,27 @@ import { Injectable } from '@nestjs/common'
 import { getKeyConfigurationFromEnvironment } from 'src/utils/llm/configuration'
 import { CompletionsDto } from './dto/chat.dto'
 import { ConfigService } from '@nestjs/config'
-import { Configuration, OpenAIApi } from 'openai'
+import OpenAI from 'openai'
 import { ModelType } from 'src/types/chat'
 import { Response } from 'express'
-import { Readable } from 'stream'
 
 @Injectable()
 export class ConversationService {
-  private openai: OpenAIApi
+  private openai: OpenAI
 
   constructor(private configService: ConfigService) {
     const keyConfiguration = getKeyConfigurationFromEnvironment(this.configService)
 
     // 初始化 OpenAI 客户端
-    let configuration: Configuration
-
     if (keyConfiguration.apiType === ModelType.AZURE_OPENAI) {
-      configuration = new Configuration({
+      this.openai = new OpenAI({
         apiKey: keyConfiguration.azureApiKey,
-        basePath: `https://${keyConfiguration.azureInstanceName}.openai.azure.com/openai/deployments/${keyConfiguration.azureDeploymentName}`,
-        baseOptions: {
-          headers: {
-            'api-key': keyConfiguration.azureApiKey,
-          },
-          params: {
-            'api-version': keyConfiguration.azureApiVersion,
-          },
+        baseURL: `https://${keyConfiguration.azureInstanceName}.openai.azure.com/openai/deployments/${keyConfiguration.azureDeploymentName}`,
+        defaultHeaders: {
+          'api-key': keyConfiguration.azureApiKey,
+        },
+        defaultQuery: {
+          'api-version': keyConfiguration.azureApiVersion,
         },
       })
     } else {
@@ -38,17 +33,18 @@ export class ConversationService {
         )
       }
 
-      configuration = new Configuration({
+      // 创建配置对象
+      const config: Record<string, any> = {
         apiKey: keyConfiguration.apiKey,
-      })
+      }
 
       // 只有当 basePath 存在时才设置
       if (keyConfiguration.basePath) {
-        configuration.basePath = keyConfiguration.basePath
+        config.baseURL = keyConfiguration.basePath
       }
-    }
 
-    this.openai = new OpenAIApi(configuration)
+      this.openai = new OpenAI(config)
+    }
 
     // 验证 API 密钥是否设置正确
     console.log('OpenAI configuration:', {
@@ -60,7 +56,7 @@ export class ConversationService {
   }
 
   async completionsStream(completionsDto: CompletionsDto, res: Response) {
-    const { messages } = completionsDto
+    const { messages, tools } = completionsDto
 
     // 将消息格式转换为 OpenAI 格式
     const openaiMessages = messages.map((message) => ({
@@ -70,15 +66,14 @@ export class ConversationService {
 
     try {
       // 使用 OpenAI API 发送流式请求
-      const response = await this.openai.createChatCompletion(
+      const stream = await this.openai.chat.completions.create(
         {
           model: this.configService.get('OPENAI_API_MODEL') || 'gpt-4o',
           messages: openaiMessages,
           temperature: 0.6,
-          max_tokens: 2000,
           stream: true,
-        },
-        { responseType: 'stream' }
+          ...(tools && { tools }),
+        }
       )
 
       // 存储完整的响应
@@ -86,62 +81,38 @@ export class ConversationService {
       let lastSentContent = '' // 跟踪最后发送的内容
 
       // 处理流式响应
-      const stream = response.data as unknown as Readable
-
-      // 为流设置编码
-      stream.setEncoding('utf8')
-
-      // 监听数据事件
-      stream.on('data', (chunk: string) => {
+      for await (const chunk of stream) {
         try {
-          const lines = chunk
-            .toString()
-            .split('\n')
-            .filter((line) => line.trim() !== '' && line.trim() !== 'data: [DONE]')
+          const content = chunk.choices[0]?.delta?.content || ''
+          const toolCalls = chunk.choices[0]?.delta?.tool_calls
 
-          for (const line of lines) {
-            const message = line.replace(/^data: /, '').trim()
+          /**
+           * toolCalls [
+  {
+    id: 'call_87476417',
+    function: { name: 'web-search', arguments: '{"query":"wegic"}' },
+    index: 0,
+    type: 'function'
+  }
+]
+           */
+          console.log('toolCalls', toolCalls)
+          if (content) {
+            // 仅发送新增的内容，而不是完整响应
+            fullResponse += content
 
-            // 跳过空消息
-            if (!message) continue
-
-            try {
-              // 解析消息
-              const data = JSON.parse(message)
-              const content = data.choices[0]?.delta?.content || ''
-
-              if (content) {
-                // 仅发送新增的内容，而不是完整响应
-                fullResponse += content
-
-                // 发送到客户端
-                res.write(`data: ${JSON.stringify({ content })}\n\n`)
-                lastSentContent = content
-              }
-            } catch (e) {
-              console.error('Error parsing OpenAI response block:', e)
-            }
+            // 发送到客户端
+            res.write(`data: ${JSON.stringify({ content })}\n\n`)
+            lastSentContent = content
           }
         } catch (error) {
           console.error('Error processing stream data:', error)
         }
-      })
+      }
 
-      // 监听完成事件
-      stream.on('end', async () => {
-        // 发送完成标记
-        res.write('data: [DONE]\n\n')
-        res.end()
-        
-      })
-
-      // 监听错误
-      stream.on('error', (error) => {
-        console.error('Stream error:', error)
-        res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`)
-        res.write('data: [DONE]\n\n')
-        res.end()
-      })
+      // 发送完成标记
+      res.write('data: [DONE]\n\n')
+      res.end()
     } catch (error) {
       console.error('OpenAI API stream response error:', error)
 

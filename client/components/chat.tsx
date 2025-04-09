@@ -184,7 +184,7 @@ export function Chat({
   // 启动流式完成
   const startCompletionStream = useCallback(async (currentMessages: ApiMessage[]) => {
     if (isLoading || !currentMessages?.length) return;
-    
+    const tools = useMCPStore.getState().tools;
     setIsLoading(true);
     
     try {
@@ -193,7 +193,8 @@ export function Chat({
           messages: currentMessages.map(msg => ({
             content: msg.content, 
             role: msg.role
-          }))
+          })),
+          tools: tools
         },
         handleStreamMessage,
         (error: any) => {
