@@ -99,7 +99,6 @@ export class ConversationService {
             break // 退出当前流处理，由新的流处理接管
           }
           if (content) {
-            console.info('content', content)
             // 仅发送新增的内容，而不是完整响应
             fullResponse += content
 
@@ -109,6 +108,9 @@ export class ConversationService {
           }
         } catch (error) {
           console.error('Error processing stream data:', error)
+          res.write(`data: ${JSON.stringify({ content: error.message })}\n\n`)
+          res.write('data: [DONE]\n\n')
+          res.end()
         }
       }
 
@@ -116,7 +118,6 @@ export class ConversationService {
       if (!hasToolCalls) {
         // 发送完成标记
         res.write('data: [DONE]\n\n')
-        console.info('res.end()')
         res.end()
       }
     } catch (error) {
