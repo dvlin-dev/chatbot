@@ -9,10 +9,10 @@ export interface Model {
 
 export const models: Array<Model> = [
   {
-    id: 'claude-3.5-sonnet',
-    label: 'claude-3.5-sonnet',
-    apiIdentifier: 'anthropic/claude-3.5-sonnet',
-    description: 'For code',
+    id: 'grok-2',
+    label: 'grok-2',
+    apiIdentifier: 'grok/grok-2',
+    description: 'For chat',
   },
   // {
   //   id: 'gpt-4o',
@@ -23,4 +23,4 @@ export const models: Array<Model> = [
 
 ] as const;
 
-export const DEFAULT_MODEL_NAME: string = 'claude-3.5-sonnet';
+export const DEFAULT_MODEL_NAME: string = 'grok-2';
