@@ -42,19 +42,17 @@ export async function completionsStream(
 ): Promise<{ abort: () => void }> {
   // 检查messages数组是否为空
   if (!data.messages || data.messages.length === 0) {
-    // const error = new Error('消息数组不能为空')
-    // onError(error)
-    // throw error
+    const error = new Error('消息数组不能为空');
+    onError(error);
     return { abort: () => {} };
   }
 
   // 构建完整的URL
-  const baseURL = httpRequest.instance.defaults.baseURL || ''
-  let fullUrl = baseURL.endsWith('/')
-    ? `${baseURL}conversation/completions`
-    : `${baseURL}/conversation/completions`
-
-  const abortController = new AbortController()
+  const baseURL = httpRequest.instance.defaults.baseURL || '';
+  let fullUrl = `${baseURL}/conversation/completions`
+  
+  
+  const abortController = new AbortController();
 
   try {
     await fetchEventSource(fullUrl, {
@@ -68,16 +66,22 @@ export async function completionsStream(
 
       onopen: async (response: Response) => {
         if (!response.ok || !response.headers.get('content-type')?.includes('text/event-stream')) {
-          // const errorText = await response.text();
-          // throw new Error(`SSE 连接失败: ${response.status} ${response.statusText} - ${errorText}`)
+          const errorText = await response.text();
+          const errorMsg = `SSE 连接失败: ${response.status} ${response.statusText} - ${errorText}`;
+          console.error('completionsStream:', errorMsg);
+          onError(new Error(errorMsg));
           return;
         }
       },
       
       onmessage: (event: EventSourceMessage) => {
         // 只处理非[DONE]消息
-        if (event.data && event.data !== '[DONE]') {
-          onMessage(event.data)
+        if (event.data) {
+          if (event.data === '[DONE]') {
+            onClose();
+          } else {
+            onMessage(event.data);
+          }
         }
       },
       
@@ -86,15 +90,16 @@ export async function completionsStream(
       },
       
       onerror: (err: any) => {
+        console.error('completionsStream: 发生错误', err);
         onError(err);
       },
-    })
+    });
 
     return { abort: () => abortController.abort() };
 
   } catch (error) {
+    console.error('completionsStream: 捕获到异常', error);
     onError(error);
-    // throw error
     return { abort: () => {} };
   }
 }

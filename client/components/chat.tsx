@@ -120,7 +120,7 @@ export function Chat({
   }, [apiMessages, isLoading]);
 
   // 添加消息
-  const append = useCallback(async (message: AIMessage | CreateMessage, chatRequestOptions?: any) => {
+  const append = async (message: AIMessage | CreateMessage, chatRequestOptions?: any) => {
     const apiMessage: ApiMessage = {
       id: (message as AIMessage).id || uuidv4(),
       content: typeof message.content === 'string' ? message.content : JSON.stringify(message.content),
@@ -135,18 +135,16 @@ export function Chat({
     setApiMessages(newMessages);
     
     if (apiMessage.role === MessageRole.user) {
-      await startCompletionStream(newMessages);
+        startCompletionStream(newMessages);
     }
-    
     return apiMessage.id;
-  }, [apiMessages]);
+  };
 
   // 处理提交
   const handleSubmit = useCallback((event?: { preventDefault?: () => void }) => {
     if (event?.preventDefault) {
       event.preventDefault();
     }
-    
     if (isLoading) return;
     if (!input.trim()) return;
     
@@ -182,12 +180,20 @@ export function Chat({
   }, [updateAssistantMessage]);
 
   // 启动流式完成
-  const startCompletionStream = useCallback(async (currentMessages: ApiMessage[]) => {
-    if (isLoading || !currentMessages?.length) return;
+  const startCompletionStream = async (currentMessages: ApiMessage[]) => {
+    console.log("isLoading:", isLoading);
+    
+    if (isLoading || !currentMessages?.length) {
+      console.log("流式请求被跳过，原因:", isLoading ? "正在加载" : "消息为空",);
+      return;
+    }
+    
     const tools = useMCPStore.getState().tools;
+    console.log("设置isLoading为true");
     setIsLoading(true);
     
     try {
+      console.log("发送请求到API，消息数量:", currentMessages.length);
       const controller = await completionsStream(
         { 
           messages: currentMessages.map(msg => ({
@@ -196,23 +202,27 @@ export function Chat({
           })),
           tools: tools
         },
-        handleStreamMessage,
+        (message) => {
+          handleStreamMessage(message);
+        },
         (error: any) => {
           console.error('流式请求错误:', error);
           setIsLoading(false);
         },
         () => {
+          console.log("流式请求完成");
           setIsLoading(false);
           abortControllerRef.current = null;
         }
       );
       
+      console.log("API请求已发送，控制器:", controller);
       abortControllerRef.current = controller;
     } catch (error) {
       console.error('启动流式请求失败:', error);
       setIsLoading(false);
     }
-  }, [isLoading, handleStreamMessage]);
+  };
 
   return (
     <div className="flex flex-col min-w-0 h-dvh bg-background">

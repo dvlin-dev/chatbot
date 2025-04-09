@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   const sseClient = await experimental_createMCPClient({
     transport: {
       type: 'sse',
-      url: 'http://0.0.0.0:5101/sse',
+      url: 'http://144.34.233.244:5101/sse',
     },
   });
 
