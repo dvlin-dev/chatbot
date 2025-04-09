@@ -1,7 +1,7 @@
 {
-  "name": "moryflow-server",
+  "name": "chatbot-server",
   "version": "0.0.1",
-  "description": "moryflow server",
+  "description": "chatbot server",
   "author": "bowling",
   "private": true,
   "license": "UNLICENSED",
