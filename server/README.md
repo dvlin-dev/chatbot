@@ -1,6 +1,6 @@
-docker build --platform linux/amd64 -t chatbot-server -f Dockerfile.app .
+docker build --platform linux/amd64 -t chatbot-server -f Dockerfile .
 
-docker tag moryflow-server dvlindev/chatbot-server
+docker tag chatbot-server dvlindev/chatbot-server
 docker push dvlindev/chatbot-server
 
 docker pull dvlindev/chatbot-server

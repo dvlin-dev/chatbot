@@ -41,15 +41,10 @@ RUN pnpm install --prod && pnpm add tslib
 
 # 从构建阶段复制编译后的代码
 COPY --from=build /app/dist ./dist
-COPY --from=build /app/prisma ./prisma
 
 # 复制配置文件
 COPY .env* ./
 COPY nest-cli.json ./
-
-# 生成 Prisma 客户端
-RUN npx prisma generate
-RUN npx prisma migrate
 
 # 暴露端口（主应用）
 EXPOSE 3100
