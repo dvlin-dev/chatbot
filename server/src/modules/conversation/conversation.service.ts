@@ -83,6 +83,7 @@ export class ConversationService {
 
       // 存储完整的响应
       let fullResponse = ''
+      let lastSentContent = '' // 跟踪最后发送的内容
 
       // 处理流式响应
       const stream = response.data as unknown as Readable
@@ -110,11 +111,12 @@ export class ConversationService {
               const content = data.choices[0]?.delta?.content || ''
 
               if (content) {
-                // 更新完整响应
+                // 仅发送新增的内容，而不是完整响应
                 fullResponse += content
 
                 // 发送到客户端
                 res.write(`data: ${JSON.stringify({ content })}\n\n`)
+                lastSentContent = content
               }
             } catch (e) {
               console.error('Error parsing OpenAI response block:', e)

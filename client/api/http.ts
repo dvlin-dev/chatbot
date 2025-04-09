@@ -7,7 +7,7 @@ import axios, {
   AxiosHeaders,
 } from 'axios'
 import { ApiResponse } from './types'
-import { API_BASE_URL } from '.'
+import { API_BASE_URL } from './const'
 
 // 默认配置
 const defaultConfig = {
@@ -42,28 +42,6 @@ const subscribeTokenRefresh = (callback: (token: string) => void) => {
 const onRefreshed = (token: string) => {
   refreshSubscribers.forEach((callback) => callback(token))
   refreshSubscribers = []
-}
-
-// 刷新令牌
-const refreshToken = async (client: AxiosInstance): Promise<string | null> => {
-  try {
-    if (!refreshToken) {
-      return null
-    }
-
-    const response = await client.post('/auth/refresh-token', {
-      refreshToken,
-    })
-
-    const { accessToken, refreshToken: newRefreshToken } = response.data.data
-
-    // 保存新的令牌
-
-    return accessToken
-  } catch (error) {
-    // 刷新令牌失败，清除所有令牌
-    return null
-  }
 }
 
 // 全局请求拦截器
@@ -132,45 +110,6 @@ const globalErrorHandlerInterceptor = async (error: AxiosError) => {
         }
       }
 
-      // 标记正在刷新令牌
-      isRefreshing = true
-      // 标记请求已重试
-      originalRequest._retry = true
-
-      try {
-        // 刷新令牌
-        const newToken = await refreshToken(axios.create({ baseURL: originalRequest.baseURL }))
-
-        if (newToken) {
-          // 通知队列中的请求
-          onRefreshed(newToken)
-
-          // 使用新令牌重试原始请求
-          if (!originalRequest.headers) {
-            originalRequest.headers = new AxiosHeaders()
-          }
-          originalRequest.headers.set('Authorization', `Bearer ${newToken}`)
-          return axios(originalRequest)
-        } else {
-          // 刷新令牌失败，清除本地存储的令牌
-          // 这里可以添加重定向到登录页面的逻辑
-          return Promise.reject({
-            code: 401,
-            message: '登录已过期，请重新登录',
-            data: null,
-          })
-        }
-      } catch (refreshError) {
-        return Promise.reject({
-          code: 401,
-          message: '登录已过期，请重新登录',
-          data: null,
-        })
-      } finally {
-        isRefreshing = false
-      }
-    }
-
     // 返回服务器的错误信息
     return Promise.reject({
       code: status,
@@ -191,6 +130,7 @@ const globalErrorHandlerInterceptor = async (error: AxiosError) => {
       message: '请求配置错误',
       data: null,
     })
+  }
   }
 }
 
