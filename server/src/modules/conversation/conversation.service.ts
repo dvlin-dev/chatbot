@@ -13,7 +13,7 @@ export class ConversationService {
   private openai: OpenAI
   private GET_TOOLS_METHOD = 'tools/list'
   private GET_TOOLS_CALL_METHOD = 'tools/call'
-  private MCP_URL = 'https://search-http.mcp.dvlin.com/mcp'
+  private MCP_URL = 'https://search.mcp.dvlin.com/mcp'
 
   constructor(private configService: ConfigService) {
     const keyConfiguration = getKeyConfigurationFromEnvironment(this.configService)
