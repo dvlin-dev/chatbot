@@ -43,7 +43,6 @@ RUN pnpm install --prod && pnpm add tslib
 COPY --from=build /app/dist ./dist
 
 # 复制配置文件
-COPY .env* ./
 COPY nest-cli.json ./
 
 # 暴露端口（主应用）
