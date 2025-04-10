@@ -5,12 +5,15 @@ import { ConfigService } from '@nestjs/config'
 import OpenAI from 'openai'
 import { ModelType } from 'src/types/chat'
 import { Response } from 'express'
-import { MCPClient } from 'src/utils/mcpClient'
+import { HttpStreamClient } from 'src/utils/HttpStreamClient'
 import { ChatCompletionMessageParam } from 'openai/resources'
 
 @Injectable()
 export class ConversationService {
   private openai: OpenAI
+  private GET_TOOLS_METHOD = 'tools/list'
+  private GET_TOOLS_CALL_METHOD = 'tools/call'
+  private MCP_URL = 'https://search-http.mcp.dvlin.com/mcp'
 
   constructor(private configService: ConfigService) {
     const keyConfiguration = getKeyConfigurationFromEnvironment(this.configService)
@@ -136,21 +139,35 @@ export class ConversationService {
       const toolName = toolCall.function.name;
       const toolArgs = JSON.parse(toolCall.function.arguments);
       res.write(`data: ${JSON.stringify({ content: `\n \n tool_call: ${toolName} . . . \n \n ` })}\n\n`)
-      const mcpClient = new MCPClient();
-      await mcpClient.connectToServer('https://search.mcp.dvlin.com/sse');
-      console.log('connectToServer', toolName, toolArgs)
-      const result = await mcpClient.callTool({
-        toolName,
-        toolArgs,
-      });
       
-      mcpClient.close();
+      const httpStreamClient = new HttpStreamClient(this.MCP_URL);
+      await httpStreamClient.initialize();
+      console.log('handleToolCalls', toolName, toolArgs);
       
+      const data = await httpStreamClient.sendRequest(this.GET_TOOLS_CALL_METHOD, { name: toolName, arguments: toolArgs });
+      const content = data[0].result.content[0].text;
+      
+      httpStreamClient.terminate();
+
       return {
         role: "tool",
         tool_call_id: toolCall.id,
-        content: result.content as string,
+        content,
       }
     }
+  }
+
+ async getTools() {
+    try {
+      const httpStreamClient = new HttpStreamClient(this.MCP_URL)
+      await httpStreamClient.initialize();
+      const tools = await httpStreamClient.sendRequest(this.GET_TOOLS_METHOD)
+      httpStreamClient.terminate();
+      return tools
+    } catch (error) {
+      console.error('Error getting tools:', error)
+      return []
+    }
+    
   }
 }

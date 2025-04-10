@@ -14,6 +14,8 @@ import { cn } from '@/lib/utils';
 import { CheckCircleFillIcon, ChevronDownIcon } from './icons';
 import { MCPClient } from '@/lib/ai/mcpClient';
 import { useMCPStore } from '@/lib/store/mcpStore';
+import { getTools } from '@/api/conversation';
+import { transformToolsFormat } from '@/lib/ai/handleHttpClient';
 
 export function MCPSelector({
   className,
@@ -27,14 +29,14 @@ export function MCPSelector({
     const fetchTools = async () => {
       setLoading(true);
       try {
-        const mcpClient = new MCPClient();
-        const tools = await mcpClient.connectToServer('https://search.mcp.dvlin.com/sse');
-        mcpClient.close();
-        console.log('tools:', tools);
-        setTools(tools);
+        const toolsData = await getTools();
+        // 转换工具格式为ChatCompletionTool格式
+        const transformedTools = transformToolsFormat(toolsData);
+        console.log('transformed tools:', transformedTools);
+        setTools(transformedTools);
         
-        if (tools.length > 0) {
-          setSelectedTool(tools[0].function.name);
+        if (transformedTools.length > 0) {
+          setSelectedTool(transformedTools[0].function.name);
         }
       } catch (error) {
         console.error('Failed to connect to MCP server:', error);

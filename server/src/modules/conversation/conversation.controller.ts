@@ -5,6 +5,7 @@ import {
   Post,
   UseInterceptors,
   Res,
+  Get,
 } from '@nestjs/common'
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger'
 import { ConversationService } from './conversation.service'
@@ -28,5 +29,12 @@ export class ConversationController {
     res.setHeader('Connection', 'keep-alive')
 
     await this.conversationService.completionsStream(completionsDto, res)
+  }
+
+  @ApiOperation({ summary: 'tools' })
+  @ApiResponse({ status: 200, description: 'Successfully get tools' })
+  @Get('/tools')
+  async getTools() {
+    return await this.conversationService.getTools()
   }
 }

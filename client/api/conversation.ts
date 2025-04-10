@@ -23,10 +23,45 @@ export interface MessageDto {
   role: MessageRole
 }
 
+// 工具输入模式
+export interface ToolInputSchema {
+  type: string
+  properties: Record<string, {
+    type: string
+    description: string
+  }>
+}
+
+// 工具类型
+export interface Tool {
+  result: {
+    tools: {
+      id: number
+      name: string
+      description: string
+      inputSchema: ToolInputSchema
+    }[]
+  },
+  jsonrpc: string,
+  id: number
+}
+
+// 工具响应类型
+export interface ToolsResponse {
+  result: {
+    tools: Tool[]
+  },
+}
+
 // 完成请求
 export interface CompletionsDto {
   messages: MessageDto[]
   tools?: ChatCompletionTool[]
+}
+
+// 获取工具列表
+export async function getTools() {
+  return httpRequest.get<ToolsResponse[]>('/conversation/tools')
 }
 
 // 完成请求

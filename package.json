@@ -8,5 +8,9 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "@types/eventsource": "^3.0.0",
+    "eventsource": "^3.0.6"
+  }
 }
