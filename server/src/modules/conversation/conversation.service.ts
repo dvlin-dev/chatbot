@@ -13,8 +13,11 @@ export class ConversationService {
   private openai: OpenAI
   private GET_TOOLS_METHOD = 'tools/list'
   private GET_TOOLS_CALL_METHOD = 'tools/call'
-  private MCP_URL = 'https://search.mcp.dvlin.com/mcp'
-
+  private MCP_LIST = [
+    'https://search.mcp.dvlin.com/mcp',
+    'https://image-gen.mcp.dvlin.com/mcp'
+  ]
+  private MCP_TOOLS_LIST: Record<string, string> = {}
   constructor(private configService: ConfigService) {
     const keyConfiguration = getKeyConfigurationFromEnvironment(this.configService)
 
@@ -63,6 +66,12 @@ export class ConversationService {
   async completionsStream(completionsDto: CompletionsDto, res: Response) {
     const { messages, tools } = completionsDto
  
+    // 检查MCP_TOOLS_LIST是否已初始化
+    if (Object.keys(this.MCP_TOOLS_LIST).length !== this.MCP_LIST.length) {
+      // to redis
+      await this.initMcpToolsMap();
+    }
+
     const systemPrompt = {
       role: "system",
       content: `你是一个智能助手，应当主动识别用户需求并使用合适的工具解决问题。
@@ -150,39 +159,138 @@ export class ConversationService {
 
 
   async handleToolCalls(toolCalls: any[], messages: any[], res: Response) {
-    for (const toolCall of toolCalls) {
+    // 创建并行处理所有工具调用的Promise
+    const toolCallPromises = toolCalls.map(async (toolCall) => {
       const toolName = toolCall.function.name;
       const toolArgs = JSON.parse(toolCall.function.arguments);
-      res.write(`data: ${JSON.stringify({ content: `\n \n tool_call: ${toolName} . . . \n \n ` })}\n\n`)
+      res.write(`data: ${JSON.stringify({ content: `\n \n tool_call: ${toolName} . . . \n \n ` })}\n\n`);
       
-      const httpStreamClient = new HttpStreamClient(this.MCP_URL);
+      // 根据工具名称找到对应的MCP URL
+      const mcpUrl = this.findMcpUrlForTool(toolName);
+      if (!mcpUrl) {
+        console.error(`No MCP URL found for tool: ${toolName}`);
+        return {
+          role: "tool",
+          tool_call_id: toolCall.id,
+          content: "Error: Tool not available"
+        };
+      }
+      
+      const httpStreamClient = new HttpStreamClient(mcpUrl);
       await httpStreamClient.initialize();
       console.log('handleToolCalls', toolName, toolArgs);
       
-      const data = await httpStreamClient.sendRequest(this.GET_TOOLS_CALL_METHOD, { name: toolName, arguments: toolArgs });
-      const content = data[0].result.content[0].text;
-      
-      httpStreamClient.terminate();
-
-      return {
-        role: "tool",
-        tool_call_id: toolCall.id,
-        content,
+      try {
+        const data = await httpStreamClient.sendRequest(this.GET_TOOLS_CALL_METHOD, { name: toolName, arguments: toolArgs });
+        const content = data[0].result.content[0].text;
+        
+        return {
+          role: "tool",
+          tool_call_id: toolCall.id,
+          content,
+        };
+      } catch (error) {
+        console.error(`Error calling tool ${toolName}:`, error);
+        return {
+          role: "tool",
+          tool_call_id: toolCall.id,
+          content: `Error calling tool ${toolName}: ${error.message}`,
+        };
+      } finally {
+        httpStreamClient.terminate();
       }
+    });
+    
+    // 等待所有工具调用完成
+    const results = await Promise.all(toolCallPromises);
+    
+    // 如果只有一个工具调用，返回该结果
+    if (results.length === 1) {
+      return results[0];
     }
+    
+    // 如果有多个工具调用，合并所有结果
+    return {
+      role: "tool",
+      content: results.map(result => `Tool ${result.tool_call_id}: ${result.content}`).join('\n\n')
+    };
   }
 
- async getTools() {
+  async getTools() {
     try {
-      const httpStreamClient = new HttpStreamClient(this.MCP_URL)
-      await httpStreamClient.initialize();
-      const tools = await httpStreamClient.sendRequest(this.GET_TOOLS_METHOD)
-      httpStreamClient.terminate();
-      return tools
+      const toolPromises = this.MCP_LIST.map(async (mcpUrl) => {
+        const httpStreamClient = new HttpStreamClient(mcpUrl)
+        await httpStreamClient.initialize();
+        const tool = (await httpStreamClient.sendRequest(this.GET_TOOLS_METHOD))[0].result.tools
+        console.log('tools', tool);
+        httpStreamClient.terminate();
+        return tool;
+      });
+      
+      const toolResults = await Promise.all(toolPromises);
+      const tools = toolResults.flat();
+      return tools;
     } catch (error) {
       console.error('Error getting tools:', error)
       return []
     }
+  }
+
+  /**
+   * 初始化MCP工具映射表
+   */
+  async initMcpToolsMap() {
+    try {
+      // 清空当前映射
+      this.MCP_TOOLS_LIST = {};
+      
+      // 并行获取每个MCP的工具并建立映射
+      const mappingPromises = this.MCP_LIST.map(async (mcpUrl, index) => {
+        const httpStreamClient = new HttpStreamClient(mcpUrl);
+        await httpStreamClient.initialize();
+        
+        try {
+          const response = await httpStreamClient.sendRequest(this.GET_TOOLS_METHOD);
+          const tools = response[0].result.tools;
+          
+          // 为每个工具创建映射到对应的MCP URL
+          for (const tool of tools) {
+            this.MCP_TOOLS_LIST[tool.name] = mcpUrl;
+          }
+          
+          console.log(`Mapped tools from ${mcpUrl}:`, tools.map(t => t.name));
+        } catch (error) {
+          console.error(`Error getting tools from ${mcpUrl}:`, error);
+        } finally {
+          httpStreamClient.terminate();
+        }
+      });
+      
+      await Promise.all(mappingPromises);
+      console.log('MCP_TOOLS_LIST initialized:', this.MCP_TOOLS_LIST);
+      
+      return this.MCP_TOOLS_LIST;
+    } catch (error) {
+      console.error('Error initializing MCP tools map:', error);
+      return this.MCP_TOOLS_LIST;
+    }
+  }
+  
+  /**
+   * 根据工具名称找到对应的MCP URL
+   */
+  findMcpUrlForTool(toolName: string): string | undefined {
+    // 如果映射表中存在该工具，返回对应URL
+    if (this.MCP_TOOLS_LIST[toolName]) {
+      return this.MCP_TOOLS_LIST[toolName];
+    }
     
+    // 如果映射表为空或找不到工具，尝试重新初始化
+    if (Object.keys(this.MCP_TOOLS_LIST).length === 0) {
+      console.log(`Tool ${toolName} not found in mapping, using default MCP URL`);
+    }
+    
+    // 找不到对应URL时使用第一个MCP作为默认值
+    return;
   }
 }
