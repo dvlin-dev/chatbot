@@ -7,7 +7,7 @@ import { Message as AIMessage, CreateMessage } from 'ai';
 import { ChatHeader } from '@/components/chat-header';
 import { Messages } from './messages';
 import { MultimodalInput } from './multimodal-input';
-import { useMCPStore } from '@/lib/store/mcpStore';
+import { useHydrateMCPStore, useMCPStore } from '@/lib/store/mcpStore';
 import { completionsStream, Message as ApiMessage, MessageRole } from '@/api/conversation';
 
 // 创建适配器函数，用于转换ApiMessage和AIMessage类型
@@ -43,6 +43,7 @@ export function Chat({
   id: string;
   selectedModelId: string;
 }) {
+  useHydrateMCPStore();
   const [apiMessages, setApiMessages] = useState<ApiMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
