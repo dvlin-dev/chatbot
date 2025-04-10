@@ -63,10 +63,25 @@ export class ConversationService {
   async completionsStream(completionsDto: CompletionsDto, res: Response) {
     const { messages, tools } = completionsDto
  
-    const openaiMessages = messages.map((message) => ({
-      role: message.role,
-      content: message.content,
-    }))
+    const systemPrompt = {
+      role: "system",
+      content: `你是一个智能助手，应当主动识别用户需求并使用合适的工具解决问题。
+当用户的问题可以通过工具解决时，请优先使用提供的工具而不是自己回答。
+分析用户的意图，确定何时应该：
+1. 直接回答简单问题
+2. 使用工具获取信息或执行操作
+3. 根据工具返回的结果提供综合解答
+
+记住，工具可以帮助你提供更准确、更有帮助的回答。不要等待用户明确要求你使用工具。`
+    }
+
+    const openaiMessages = [
+      systemPrompt,
+      ...messages.map((message) => ({
+        role: message.role,
+        content: message.content,
+      }))
+    ]
 
     try {
       // 使用 OpenAI API 发送流式请求
