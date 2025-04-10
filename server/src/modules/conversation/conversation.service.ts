@@ -143,7 +143,9 @@ export class ConversationService {
         toolName,
         toolArgs,
       });
-
+      
+      mcpClient.close();
+      
       return {
         role: "tool",
         tool_call_id: toolCall.id,
