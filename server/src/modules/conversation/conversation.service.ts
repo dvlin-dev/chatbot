@@ -80,6 +80,7 @@ export class ConversationService {
 1. 直接回答简单问题，且不需要提起你有什么工具。
 2. 使用工具获取信息或执行操作
 3. 根据工具返回的结果提供综合解答
+4. 图片链接请用 markdown 格式输出
 
 记住，工具可以帮助你提供更准确、更有帮助的回答。不要等待用户明确要求你使用工具。`
     }
@@ -183,7 +184,7 @@ export class ConversationService {
       try {
         const data = await httpStreamClient.sendRequest(this.GET_TOOLS_CALL_METHOD, { name: toolName, arguments: toolArgs });
         const content = data[0].result.content[0].text;
-        
+
         return {
           role: "tool",
           tool_call_id: toolCall.id,
@@ -222,7 +223,6 @@ export class ConversationService {
         const httpStreamClient = new HttpStreamClient(mcpUrl)
         await httpStreamClient.initialize();
         const tool = (await httpStreamClient.sendRequest(this.GET_TOOLS_METHOD))[0].result.tools
-        console.log('tools', tool);
         httpStreamClient.terminate();
         return tool;
       });
@@ -267,7 +267,6 @@ export class ConversationService {
       });
       
       await Promise.all(mappingPromises);
-      console.log('MCP_TOOLS_LIST initialized:', this.MCP_TOOLS_LIST);
       
       return this.MCP_TOOLS_LIST;
     } catch (error) {

@@ -22,7 +22,6 @@ export function MCPSelector({
 }: React.ComponentProps<typeof Button>) {
   const { tools, setTools } = useMCPStore();
   const [open, setOpen] = useState(false);
-  const [selectedTool, setSelectedTool] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,12 +31,8 @@ export function MCPSelector({
         const toolsData = await getTools();
         // 转换工具格式为ChatCompletionTool格式
         const transformedTools = transformToolsFormat(toolsData);
-        console.log('transformed tools:', transformedTools);
         setTools(transformedTools);
         
-        if (transformedTools.length > 0) {
-          setSelectedTool(transformedTools[0].function.name);
-        }
       } catch (error) {
         console.error('Failed to connect to MCP server:', error);
       } finally {
@@ -57,8 +52,9 @@ export function MCPSelector({
           className,
         )}
       >
+        {/* @ts-ignore */}
         <Button variant="outline" className="md:px-2 md:h-[34px]">
-          {loading ? 'Mcp Loading...' : selectedTool || 'MCP 工具'}
+          {loading ? 'Mcp Loading...' : 'MCP List'}
           <ChevronDownIcon />
         </Button>
       </DropdownMenuTrigger>
@@ -66,12 +62,8 @@ export function MCPSelector({
         {tools.map((tool) => (
           <DropdownMenuItem
             key={tool.function.name}
-            onSelect={() => {
-              setOpen(false);
-              setSelectedTool(tool.function.name);
-            }}
             className="gap-4 group/item flex flex-row justify-between items-center"
-            data-active={tool.function.name === selectedTool}
+            data-active={true}
           >
             <div className="flex flex-col gap-1 items-start">
               {tool.function.name}
