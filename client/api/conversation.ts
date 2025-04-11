@@ -34,23 +34,9 @@ export interface ToolInputSchema {
 
 // 工具类型
 export interface Tool {
-  result: {
-    tools: {
-      id: number
-      name: string
-      description: string
-      inputSchema: ToolInputSchema
-    }[]
-  },
-  jsonrpc: string,
-  id: number
-}
-
-// 工具响应类型
-export interface ToolsResponse {
-  result: {
-    tools: Tool[]
-  },
+  name: string
+  description: string
+  inputSchema: ToolInputSchema
 }
 
 // 完成请求
@@ -59,9 +45,15 @@ export interface CompletionsDto {
   tools?: ChatCompletionTool[]
 }
 
+// API响应格式
+interface ToolsResponse {
+  data: Tool[]
+  timestamp: string
+}
+
 // 获取工具列表
 export async function getTools() {
-  return httpRequest.get<ToolsResponse[]>('/conversation/tools')
+  return httpRequest.get<ToolsResponse>('/conversation/tools')
 }
 
 // 完成请求

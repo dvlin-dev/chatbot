@@ -17,11 +17,12 @@ interface MCPTool {
  * 将MCP返回的工具格式转换为OpenAI的ChatCompletionTool格式
  */
 export function transformToolsFormat(response: any): ChatCompletionTool[] {
-  if (!response?.data?.[0]?.result?.tools) {
+  // 检查新的数据结构
+  if (!response?.data) {
     return [];
   }
 
-  const sourceTools = response.data[0].result.tools as MCPTool[];
+  const sourceTools = response.data as MCPTool[];
   
   return sourceTools.map((tool: MCPTool) => ({
     type: 'function',
