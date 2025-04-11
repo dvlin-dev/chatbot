@@ -21,6 +21,7 @@ export default async function Layout({
         src="./pyodide.js"
         strategy="beforeInteractive"
       />
+      <script defer src="https://umami.dvlin.com/script.js" data-website-id="c75440be-cbe9-41d5-9fb3-c349171ddc26"></script>
       <SidebarProvider defaultOpen={!isCollapsed}>
         {/* <AppSidebar /> */}
         <SidebarInset>{children}</SidebarInset>
