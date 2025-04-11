@@ -220,19 +220,8 @@ export class ConversationService {
       
       const toolResults = await Promise.all(toolPromises);
       const tools = toolResults.flat();
-      
-      // 转换为OpenAI工具格式
-      return tools.map((tool) => ({
-        type: 'function',
-        function: {
-          name: tool.name,
-          description: tool.description || '',
-          parameters: tool.inputSchema || {
-            type: 'object',
-            properties: {}
-          }
-        }
-      })) as ChatCompletionTool[];
+      return tools;
+
     } catch (error) {
       console.error('Error getting tools:', error)
       return []
