@@ -261,7 +261,6 @@ export class ConversationService {
             this.MCP_TOOLS_LIST[tool.name] = mcpUrl;
           }
           
-          console.log(`Mapped tools from ${mcpUrl}:`, tools.map(t => t.name));
         } catch (error) {
           console.error(`Error getting tools from ${mcpUrl}:`, error);
         } finally {
@@ -292,7 +291,6 @@ export class ConversationService {
       console.log(`Tool ${toolName} not found in mapping, using default MCP URL`);
     }
     
-    // 找不到对应URL时使用第一个MCP作为默认值
     return;
   }
 }
