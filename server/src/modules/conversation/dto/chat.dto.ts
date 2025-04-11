@@ -10,7 +10,7 @@ export enum MessageRole {
   tool = 'tool',
 }
 
-class MessageDto {
+export class MessageDto {
   @ApiProperty({ description: 'message content', required: true })
   @IsNotEmpty()
   @IsString()

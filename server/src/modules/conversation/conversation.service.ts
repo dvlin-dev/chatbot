@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common'
 import { getKeyConfigurationFromEnvironment } from 'src/utils/llm/configuration'
-import { CompletionsDto } from './dto/chat.dto'
+import { CompletionsDto, MessageDto } from './dto/chat.dto'
 import { ConfigService } from '@nestjs/config'
 import OpenAI from 'openai'
 import { ModelType } from 'src/types/chat'
 import { Response } from 'express'
 import { HttpStreamClient } from 'src/utils/HttpStreamClient'
-import { ChatCompletionMessageParam } from 'openai/resources'
+import { ChatCompletionMessageParam, ChatCompletionTool, ChatCompletionChunk } from 'openai/resources'
 
 @Injectable()
 export class ConversationService {
@@ -18,6 +18,7 @@ export class ConversationService {
     'https://image-gen.mcp.dvlin.com/mcp'
   ]
   private MCP_TOOLS_LIST: Record<string, string> = {}
+  
   constructor(private configService: ConfigService) {
     const keyConfiguration = getKeyConfigurationFromEnvironment(this.configService)
 
@@ -118,9 +119,9 @@ export class ConversationService {
 
           if (toolCalls && toolCalls.length > 0) {
             hasToolCalls = true
-            const result = await this.handleToolCalls(toolCalls, messages, res)
+            const result = await this.handleToolCalls(toolCalls, res)
             this.completionsStream({
-              messages: [...messages, result] as any,
+              messages: [...messages, ...result] as MessageDto [],
             }, res)
             break // 退出当前流处理，由新的流处理接管
           }
@@ -159,7 +160,7 @@ export class ConversationService {
   }
 
 
-  async handleToolCalls(toolCalls: any[], messages: any[], res: Response) {
+  async handleToolCalls(toolCalls: ChatCompletionChunk.Choice.Delta.ToolCall[], res: Response) {
     // 创建并行处理所有工具调用的Promise
     const toolCallPromises = toolCalls.map(async (toolCall) => {
       const toolName = toolCall.function.name;
@@ -182,7 +183,7 @@ export class ConversationService {
       console.log('handleToolCalls', toolName, toolArgs);
       
       try {
-        const data = await httpStreamClient.sendRequest(this.GET_TOOLS_CALL_METHOD, { name: toolName, arguments: toolArgs });
+        const data = await httpStreamClient.sendRequest(this.GET_TOOLS_CALL_METHOD, { name: toolName, arguments: toolArgs })
         const content = data[0].result.content[0].text;
 
         return {
@@ -204,32 +205,34 @@ export class ConversationService {
     
     // 等待所有工具调用完成
     const results = await Promise.all(toolCallPromises);
-    
-    // 如果只有一个工具调用，返回该结果
-    if (results.length === 1) {
-      return results[0];
-    }
-    
-    // 如果有多个工具调用，合并所有结果
-    return {
-      role: "tool",
-      content: results.map(result => `Tool ${result.tool_call_id}: ${result.content}`).join('\n\n')
-    };
+    return results
   }
 
-  async getTools() {
+  async getTools(): Promise<ChatCompletionTool[]> {
     try {
       const toolPromises = this.MCP_LIST.map(async (mcpUrl) => {
         const httpStreamClient = new HttpStreamClient(mcpUrl)
         await httpStreamClient.initialize();
-        const tool = (await httpStreamClient.sendRequest(this.GET_TOOLS_METHOD))[0].result.tools
+        const tool = (await httpStreamClient.sendRequest(this.GET_TOOLS_METHOD))[0].result.tools;
         httpStreamClient.terminate();
         return tool;
       });
       
       const toolResults = await Promise.all(toolPromises);
       const tools = toolResults.flat();
-      return tools;
+      
+      // 转换为OpenAI工具格式
+      return tools.map((tool) => ({
+        type: 'function',
+        function: {
+          name: tool.name,
+          description: tool.description || '',
+          parameters: tool.inputSchema || {
+            type: 'object',
+            properties: {}
+          }
+        }
+      })) as ChatCompletionTool[];
     } catch (error) {
       console.error('Error getting tools:', error)
       return []
