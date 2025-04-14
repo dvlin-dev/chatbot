@@ -1,1 +1,1 @@
-a chatbot without vercel ai sdk
+a chatbot
