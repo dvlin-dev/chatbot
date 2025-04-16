@@ -9,9 +9,9 @@ export interface Model {
 
 export const models: Array<Model> = [
   {
-    id: 'grok-3-fast-latest',
-    label: 'grok-3-fast-latest',
-    apiIdentifier: 'grok/grok-3-fast-latest',
+    id: 'grok-3-beta',
+    label: 'grok-3-beta',
+    apiIdentifier: 'grok/grok-3-beta',
     description: 'For chat',
   },
   // {
@@ -23,4 +23,4 @@ export const models: Array<Model> = [
 
 ] as const;
 
-export const DEFAULT_MODEL_NAME: string = 'grok-3-fast-latest';
+export const DEFAULT_MODEL_NAME: string = 'grok-3-beta';
