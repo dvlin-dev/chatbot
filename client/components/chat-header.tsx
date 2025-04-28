@@ -6,7 +6,7 @@ import { useWindowSize } from 'usehooks-ts';
 
 import { ModelSelector } from '@/components/model-selector';
 import { Button } from '@/components/ui/button';
-import { PlusIcon } from './icons';
+import { PlusIcon, VolumeIcon } from './icons';
 import { useSidebar } from './ui/sidebar';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { MCPSelector } from './mcp-selector';

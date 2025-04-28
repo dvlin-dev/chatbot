@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 import { useLocalStorage, useWindowSize } from 'usehooks-ts';
 
 import { sanitizeUIMessages } from '@/lib/utils';
-import { ArrowUpIcon, StopIcon } from './icons';
+import { ArrowUpIcon, StopIcon, VolumeIcon } from './icons';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 
@@ -44,6 +44,8 @@ function PureMultimodalInput({
   append,
   handleSubmit,
   className,
+  ttsEnabled,
+  toggleTTS,
 }: {
   chatId: string;
   input: string;
@@ -63,6 +65,8 @@ function PureMultimodalInput({
     chatRequestOptions?: ChatRequestOptions,
   ) => void;
   className?: string;
+  ttsEnabled?: boolean;
+  toggleTTS?: () => void;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
@@ -143,7 +147,21 @@ function PureMultimodalInput({
         }}
       />
 
-      <div className="absolute bottom-0 right-0 p-2 w-fit flex flex-row justify-end">
+      <div className="absolute bottom-0 p-2 w-full flex flex-row justify-between items-center">
+        {/* 语音开关按钮 */}
+        {toggleTTS && (
+          <Button
+            className="rounded-full p-1.5 h-fit border dark:border-zinc-600"
+            onClick={(event) => {
+              event.preventDefault();
+              toggleTTS();
+            }}
+            title={ttsEnabled ? "关闭语音" : "开启语音"}
+          >
+            {ttsEnabled ? <VolumeIcon size={14} /> : <VolumeIcon size={14} color="gray" />}
+          </Button>
+        )}
+        <div className="flex-grow"></div>
         {isLoading ? (
           <StopButton stop={stop} setMessages={setMessages} />
         ) : (
@@ -159,6 +177,7 @@ export const MultimodalInput = memo(
   (prevProps, nextProps) => {
     if (prevProps.input !== nextProps.input) return false;
     if (prevProps.isLoading !== nextProps.isLoading) return false;
+    if (prevProps.ttsEnabled !== nextProps.ttsEnabled) return false;
 
     return true;
   },
