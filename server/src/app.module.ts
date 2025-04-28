@@ -5,6 +5,7 @@ import * as Joi from 'joi'
 import { RedisModule } from '@nestjs-modules/ioredis'
 // import { StatusModule } from './modules/status/status.module'
 import { ConversationModule } from './modules/conversation/conversation.module'
+import { TtsModule } from './modules/tts/tts.module'
 
 const envFilePath = `.env.${process.env.NODE_ENV || `development`}`
 const schema = Joi.object({
@@ -40,6 +41,7 @@ const schema = Joi.object({
       validationSchema: schema,
     }),
     ConversationModule,
+    TtsModule,
   ],
   controllers: [],
   providers: [Logger],

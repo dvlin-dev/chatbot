@@ -24,10 +24,6 @@ export class ConversationController {
   @ApiResponse({ status: 200, description: 'Successfully get completions' })
   @Post('/completions')
   async completions(@Body() completionsDto: CompletionsDto, @Res() res: Response) {
-    res.setHeader('Content-Type', 'text/event-stream')
-    res.setHeader('Cache-Control', 'no-cache')
-    res.setHeader('Connection', 'keep-alive')
-
     await this.conversationService.completionsStream(completionsDto, res)
   }
 

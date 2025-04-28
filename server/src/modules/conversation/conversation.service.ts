@@ -73,6 +73,11 @@ export class ConversationService {
       await this.initMcpToolsMap();
     }
 
+    // 设置文本流的响应头
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
     const systemPrompt = {
       role: "system",
       content: `你是一个智能助手，应当主动识别用户需求并使用合适的工具解决问题。
@@ -108,7 +113,6 @@ export class ConversationService {
 
       // 存储完整的响应
       let fullResponse = ''
-      let lastSentContent = '' // 跟踪最后发送的内容
       let hasToolCalls = false // 跟踪是否触发了工具调用
 
       // 处理流式响应
@@ -126,24 +130,22 @@ export class ConversationService {
             break // 退出当前流处理，由新的流处理接管
           }
           if (content) {
-            // 仅发送新增的内容，而不是完整响应
+            // 累加完整响应
             fullResponse += content
-
-            // 发送到客户端
+            // 发送文本流
             res.write(`data: ${JSON.stringify({ content })}\n\n`)
-            lastSentContent = content
           }
         } catch (error) {
           console.error('Error processing stream data:', error)
           res.write(`data: ${JSON.stringify({ content: error.message })}\n\n`)
           res.write('data: [DONE]\n\n')
           res.end()
+          return
         }
       }
 
-      // 只有在没有触发工具调用时才发送完成标记
+      // 如果没有触发工具调用，发送完成标记
       if (!hasToolCalls) {
-        // 发送完成标记
         res.write('data: [DONE]\n\n')
         res.end()
       }
@@ -158,7 +160,6 @@ export class ConversationService {
       throw error
     }
   }
-
 
   async handleToolCalls(toolCalls: ChatCompletionChunk.Choice.Delta.ToolCall[], res: Response) {
     // 创建并行处理所有工具调用的Promise
